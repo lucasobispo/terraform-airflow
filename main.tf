@@ -2,6 +2,10 @@ resource "aws_s3_bucket" "create_bucket" {
   bucket = "767398038964-raw"
 }
 
+resource "aws_s3_bucket" "create_bucket_application" {
+  bucket = "767398038964s3-application"
+}
+
 resource "aws_security_group" "ssh_http" {
   name        = "permitir_ssh"
   description = "Permite SSH e HTTP na instancia EC2"
@@ -23,6 +27,15 @@ resource "aws_security_group" "ssh_http" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "Personalized HTTP to EC2"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -39,14 +52,21 @@ output "security_group_id" {
   value = aws_security_group.ssh_http.id
 }
 
+resource "aws_eip" "elastic_ip" {
+  vpc = true
+  instance = aws_instance.airflow.id
+}
+
 resource "aws_instance" "airflow" {
-  count                  = 1
-  ami                    = "ami-0f403e3180720dd7e"
-  instance_type          = "t2.medium"
-  key_name               = "vockey"
-  vpc_security_group_ids = [aws_security_group.ssh_http.id]
+  ami                     = "ami-0f403e3180720dd7e"
+  instance_type           = "t2.medium"
+  key_name                = "vockey"
+  vpc_security_group_ids  = [aws_security_group.ssh_http.id]
+  user_data               = "${path.module}/data/bootstrap.sh"
+
 
   tags = {
-    Name = "airflow{count.index}"
+    Name = "airflow"
   }
 }
+
